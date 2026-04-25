@@ -10,6 +10,7 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
+    "test": "node --test \"tests/**/*.test.mjs\"",
     "typecheck": "turbo typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,md,json,css}\"",
     "db:generate": "node scripts/run-workspace.mjs @lifeops/db db:generate",

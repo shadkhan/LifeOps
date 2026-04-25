@@ -1,15 +1,36 @@
 "use server";
 
-import { db, type GoalStatus, type Priority } from "@lifeops/db";
-import { goalSchema, goalStatusSchema, idSchema } from "@lifeops/shared";
+import { db, type GoalStatus, type HabitFrequency, type Priority } from "@lifeops/db";
+import { generatedHabitSchema, goalSchema, goalStatusSchema, idSchema } from "@lifeops/shared";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { generateHabitsFromGoal } from "@/server/services/ai-service";
 
 export type GoalActionState = {
   ok: boolean;
   message: string;
 };
+
+export type GeneratedHabitSuggestion = {
+  id: string;
+  name: string;
+  frequency: string;
+  suggestedReminderTime?: string;
+  reason: string;
+};
+
+export type GenerateHabitSuggestionsState = {
+  ok: boolean;
+  message: string;
+  suggestions: GeneratedHabitSuggestion[];
+};
+
+const saveGeneratedHabitsSchema = z.object({
+  goalId: idSchema,
+  habits: z.array(generatedHabitSchema).min(1).max(10),
+});
 
 const errorState = (message: string): GoalActionState => ({ ok: false, message });
 const successState = (message: string): GoalActionState => ({ ok: true, message });
@@ -147,6 +168,118 @@ export async function deleteGoalAction(formData: FormData) {
   }
 }
 
+export async function generateHabitSuggestionsAction(
+  _: GenerateHabitSuggestionsState,
+  formData: FormData,
+): Promise<GenerateHabitSuggestionsState> {
+  const user = await requireCurrentUser();
+  const goalId = idSchema.safeParse(readString(formData, "goalId"));
+
+  if (!goalId.success) {
+    return { ok: false, message: "Invalid goal.", suggestions: [] };
+  }
+
+  const goal = await db.goal.findFirst({
+    where: {
+      id: goalId.data,
+      userId: user.id,
+    },
+    include: {
+      lifeArea: {
+        select: {
+          name: true,
+          type: true,
+          vision: true,
+        },
+      },
+    },
+  });
+
+  if (!goal) {
+    return { ok: false, message: "Goal not found.", suggestions: [] };
+  }
+
+  const futureSelf = await db.futureSelf.findUnique({
+    where: { userId: user.id },
+    select: {
+      title: true,
+      identityStatement: true,
+      description: true,
+    },
+  });
+
+  const result = await generateHabitsFromGoal({
+    title: goal.title,
+    description: [
+      goal.description ? `Goal description: ${goal.description}` : null,
+      `Life area: ${goal.lifeArea.name} (${goal.lifeArea.type})`,
+      goal.lifeArea.vision ? `Life area vision: ${goal.lifeArea.vision}` : null,
+      futureSelf
+        ? `Future self: ${futureSelf.title}. ${futureSelf.identityStatement}. ${futureSelf.description ?? ""}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    targetDate: goal.targetDate,
+  });
+
+  if (!result.ok) {
+    return { ok: false, message: result.error, suggestions: [] };
+  }
+
+  return {
+    ok: true,
+    message: `Generated ${result.data.habits.length} habit suggestions.`,
+    suggestions: result.data.habits.slice(0, 5).map((habit, index) => ({
+      id: `${Date.now()}-${index}`,
+      ...habit,
+    })),
+  };
+}
+
+export async function saveGeneratedHabitsAction(_: GoalActionState, formData: FormData): Promise<GoalActionState> {
+  const user = await requireCurrentUser();
+  const rawHabits = readString(formData, "habits");
+
+  const parsed = saveGeneratedHabitsSchema.safeParse({
+    goalId: readString(formData, "goalId"),
+    habits: rawHabits ? JSON.parse(rawHabits) : [],
+  });
+
+  if (!parsed.success) {
+    return errorState(parsed.error.issues[0]?.message ?? "Choose at least one valid habit suggestion.");
+  }
+
+  const goal = await db.goal.findFirst({
+    where: {
+      id: parsed.data.goalId,
+      userId: user.id,
+    },
+    select: { id: true },
+  });
+
+  if (!goal) {
+    return errorState("Goal not found.");
+  }
+
+  await db.habit.createMany({
+    data: parsed.data.habits.map((habit) => ({
+      userId: user.id,
+      goalId: parsed.data.goalId,
+      name: habit.name,
+      description: habit.reason,
+      frequency: normalizeHabitFrequency(habit.frequency),
+      reminderTime: normalizeReminderTime(habit.suggestedReminderTime),
+      status: "active",
+    })),
+  });
+
+  revalidatePath(`/goals/${parsed.data.goalId}`);
+  revalidatePath("/habits");
+  revalidatePath("/dashboard");
+  return successState("Selected habits saved.");
+}
+
 function parseGoalForm(formData: FormData) {
   const parsed = goalSchema.safeParse({
     lifeAreaId: readString(formData, "lifeAreaId"),
@@ -197,4 +330,35 @@ function readOptionalDate(formData: FormData, key: string) {
 function readNumber(formData: FormData, key: string) {
   const value = Number(readString(formData, key));
   return Number.isFinite(value) ? value : 0;
+}
+
+function normalizeHabitFrequency(value: string): HabitFrequency {
+  const normalized = value.toLowerCase();
+
+  if (normalized.includes("weekday")) {
+    return "weekdays";
+  }
+
+  if (normalized.includes("week")) {
+    return "weekly";
+  }
+
+  if (normalized.includes("month")) {
+    return "monthly";
+  }
+
+  if (normalized.includes("daily") || normalized.includes("day")) {
+    return "daily";
+  }
+
+  return "custom";
+}
+
+function normalizeReminderTime(value?: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  const match = value.match(/\b([01]\d|2[0-3]):[0-5]\d\b/);
+  return match?.[0];
 }

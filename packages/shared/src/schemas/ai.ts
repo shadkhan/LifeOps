@@ -21,8 +21,10 @@ export const dailyPlanBlockSchema = z.object({
 
 export const dailyPlannerResponseSchema = z.object({
   date: z.string().min(1),
+  dailyFocus: z.string().min(1),
   priorities: z.array(z.string().min(1)).min(1).max(5),
   plan: z.array(dailyPlanBlockSchema).min(1),
+  habitsToComplete: z.array(z.string().min(1)).default([]),
   suggestedTasks: z
     .array(
       z.object({
@@ -32,6 +34,7 @@ export const dailyPlannerResponseSchema = z.object({
       }),
     )
     .default([]),
+  improvementSuggestion: z.string().min(1),
   reflectionPrompt: z.string().min(1),
 });
 
@@ -39,6 +42,7 @@ export const weeklyReviewResponseSchema = z.object({
   summary: z.string().min(1),
   wins: z.array(z.string().min(1)).default([]),
   gaps: z.array(z.string().min(1)).default([]),
+  patterns: z.array(z.string().min(1)).default([]),
   habitInsights: z.array(z.string().min(1)).default([]),
   goalProgress: z.array(z.string().min(1)).default([]),
   nextWeekSuggestions: z.array(z.string().min(1)).default([]),

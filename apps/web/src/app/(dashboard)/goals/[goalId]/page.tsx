@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getGoalForUser, getLifeAreasForGoalForms } from "@/lib/db/goals";
 import { cn } from "@/lib/utils";
+import { AIHabitGenerator } from "../ai-habit-generator";
 import { DeleteGoalButton, EditGoalForm, GoalStatusForm } from "../forms";
 
 export default async function GoalDetailPage({
@@ -87,6 +88,16 @@ export default async function GoalDetailPage({
         </Card>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle>AI habit suggestions</CardTitle>
+              <Flame className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <AIHabitGenerator goalId={goal.id} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle>Linked habits</CardTitle>

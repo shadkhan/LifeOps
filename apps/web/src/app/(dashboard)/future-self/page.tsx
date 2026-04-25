@@ -28,7 +28,7 @@ export default async function FutureSelfPage() {
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="text-base font-semibold">Create your future self profile</h3>
+                <h3 className="text-base font-semibold">Create your future version of self</h3>
                 <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
                   Start with a title, description, and identity statement. Life areas become more useful after this exists.
                 </p>
@@ -41,7 +41,7 @@ export default async function FutureSelfPage() {
       <section className="grid gap-4 xl:grid-cols-[1fr_0.85fr]">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Profile</CardTitle>
+            <CardTitle>Future Version of MySelf</CardTitle>
             <Compass className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -57,7 +57,7 @@ export default async function FutureSelfPage() {
           <CardContent>
             <AddLifeAreaForm disabled={!futureSelf} />
             {!futureSelf ? (
-              <p className="mt-3 text-sm text-muted-foreground">Create the profile first, then add life areas.</p>
+              <p className="mt-3 text-sm text-muted-foreground">Create the future version first, then add life areas.</p>
             ) : null}
           </CardContent>
         </Card>

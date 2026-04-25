@@ -41,6 +41,12 @@ enum HabitStatus {
   archived
 }
 
+enum AIProvider {
+  openai
+  anthropic
+  groq
+}
+
 enum LifeAreaType {
   health
   career
@@ -241,4 +247,12 @@ model WeeklyReview {
 
   @@unique([userId, weekStart, weekEnd])
   @@index([userId])
+}
+
+model AiSettings {
+  id        String     @id @default("global")
+  provider  AIProvider @default(groq)
+  model     String     @default("llama-3.1-8b-instant")
+  updatedAt DateTime   @updatedAt
+  createdAt DateTime   @default(now())
 }

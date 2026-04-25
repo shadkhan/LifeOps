@@ -10,6 +10,7 @@ import {
   CheckSquare,
   Compass,
   Flame,
+  Settings,
   Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const navigationItems = [
   { href: "/notes", label: "Notes", icon: BookOpenText },
   { href: "/ai-planner", label: "AI Planner", icon: Brain },
   { href: "/weekly-review", label: "Weekly Review", icon: CalendarCheck },
+  { href: "/admin", label: "Admin", icon: Settings },
 ];
 
 type NavigationItem = (typeof navigationItems)[number];

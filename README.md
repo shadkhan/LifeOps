@@ -2,70 +2,149 @@
 
 LifeOps is an AI-powered personal operating system for future self planning, goals, habits, tasks, notes, daily planning, and weekly reviews.
 
+## MVP Modules
+
+- Future Self and Life Areas
+- Goals
+- Habits and Habit Logs
+- Tasks
+- Notes
+- Dashboard
+- AI Daily Planner
+- Weekly Review
+- Admin settings
+
 ## Stack
 
-- pnpm + Turborepo
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Prisma + PostgreSQL
+- Prisma ORM
+- PostgreSQL
 - Redis
+- NextAuth
 - Zod
-- OpenAI-compatible AI provider abstraction
-- Docker Compose for local infrastructure
+- Server-side AI clients for OpenAI, Anthropic, and Groq
 
 ## Local Setup
 
-```bash
-corepack enable
-pnpm install
-docker compose up -d
-cp .env.example .env
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
-pnpm dev
-```
-
-If `pnpm` is not available, use npm workspaces:
+1. Install dependencies.
 
 ```bash
 npm install
-docker compose up -d
+```
+
+2. Create the environment file.
+
+```bash
 copy .env.example .env
+```
+
+On macOS/Linux:
+
+```bash
+cp .env.example .env
+```
+
+3. Start local infrastructure.
+
+```bash
+docker compose up -d
+```
+
+4. Generate Prisma Client, run migrations, and seed data.
+
+```bash
 npm run db:generate
 npm run db:migrate
 npm run db:seed
+```
+
+5. Start the app.
+
+```bash
 npm run dev
 ```
 
-The web app runs at `http://localhost:3000`.
+The app runs at:
+
+```txt
+http://localhost:3000
+```
 
 ## Test Login
 
-Local development includes a seeded admin user:
+Seed data creates a local admin user:
 
-- Username: `admin`
-- Password: `password123`
+```txt
+Username: admin
+Password: password123
+```
 
-## AI Providers
+## Seed Data
 
-Set `AI_PROVIDER` in `.env`:
+`npm run db:seed` creates realistic example data for the admin user:
 
-- `openai`
-- `groq`
-- `together`
-- `ollama`
-- `fallback`
+- Future Self profile
+- Life Areas
+- Active Goals
+- Habits and recent Habit Logs
+- Tasks for today, overdue, and completed states
+- Notes
+- Daily Plan
+- Weekly Review
+- Default global AI settings
 
-Provider-specific model and API key variables are documented in `.env.example`.
+The seed script resets only the seeded admin user's related records.
 
-`AI_FALLBACK_ENABLED` defaults to `true`. When an external AI provider is missing, misconfigured, or temporarily unavailable, LifeOps returns conservative server-side fallback suggestions so the app continues to work. Set `AI_PROVIDER="fallback"` to run without an external AI API.
+## AI Settings
 
-## Deployment
+Open `/admin` to choose the global AI provider and model.
 
-Production is designed for a Hetzner VPS using Docker Compose and GitHub Actions. Do not assume Vercel. Keep production secrets in GitHub Actions secrets and the server environment.
+Supported providers:
+
+- Groq
+- OpenAI
+- Anthropic
+
+API keys must stay in `.env` and are only read server-side:
+
+```txt
+GROQ_API_KEY=
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+```
+
+AI calls are never automatic. They run only from explicit user actions such as Generate Habits, Plan My Day, or Generate Weekly Review.
+
+## Scripts
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+npm run dev
+npm run build
+npm run typecheck
+npm test
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+npm run db:studio
 ```
+
+## Quality Checks
+
+Run before pushing:
+
+```bash
+npm run typecheck --workspace @lifeops/web
+npm run typecheck --workspace @lifeops/shared
+npm run typecheck --workspace @lifeops/db
+npm test
+```
+
+## Security Notes
+
+- Do not commit `.env`.
+- Do not expose AI keys to client components.
+- All application data must be scoped to the authenticated user.
+- AI features should send only the context needed for the requested action.
+- PostgreSQL and Redis are intended for local Docker or private production networks.
