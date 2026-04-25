@@ -1,0 +1,26 @@
+{
+  "name": "lifeops",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json,css}\"",
+    "db:generate": "node scripts/run-workspace.mjs @lifeops/db db:generate",
+    "db:migrate": "node scripts/run-workspace.mjs @lifeops/db db:migrate",
+    "db:seed": "node scripts/run-workspace.mjs @lifeops/db db:seed",
+    "db:studio": "node scripts/run-workspace.mjs @lifeops/db db:studio"
+  },
+  "devDependencies": {
+    "pnpm": "9.15.4",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
