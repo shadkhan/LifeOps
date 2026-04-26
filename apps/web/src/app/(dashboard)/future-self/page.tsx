@@ -1,9 +1,9 @@
-import { Compass, Plus, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getFutureSelfForUser } from "@/lib/db/future-self";
-import { AIFutureSelfGenerator } from "./ai-future-self-generator";
-import { AddLifeAreaForm, EditLifeAreaForm, FutureSelfForm } from "./forms";
+import { AddLifeAreaCard } from "./add-life-area-card";
+import { EditLifeAreaForm } from "./forms";
+import { FutureSelfWorkspace } from "./future-self-workspace";
 
 export default async function FutureSelfPage() {
   const user = await requireCurrentUser();
@@ -21,58 +21,11 @@ export default async function FutureSelfPage() {
         </div>
       </section>
 
-      {!futureSelf ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-muted">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-base font-semibold">Create your future version of self</h3>
-                <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                  Start with a title, description, and identity statement. Life areas become more useful after this exists.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
+      <FutureSelfWorkspace futureSelf={futureSelf} />
 
-      <section className="grid gap-4 xl:grid-cols-[1fr_0.85fr]">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Future Version of MySelf</CardTitle>
-            <Compass className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <FutureSelfForm futureSelf={futureSelf} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Add life area</CardTitle>
-            <Plus className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <AddLifeAreaForm disabled={!futureSelf} />
-            {!futureSelf ? (
-              <p className="mt-3 text-sm text-muted-foreground">Create the future version first, then add life areas.</p>
-            ) : null}
-          </CardContent>
-        </Card>
+      <section>
+        <AddLifeAreaCard disabled={!futureSelf} />
       </section>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>AI future self draft</CardTitle>
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <AIFutureSelfGenerator />
-        </CardContent>
-      </Card>
 
       <section className="space-y-4">
         <div>

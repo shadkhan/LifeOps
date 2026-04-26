@@ -3,6 +3,7 @@ export type {
   DailyPlanner,
   DailyPlannerResponse,
   FutureSelfGenerationResponse,
+  FutureSelfHabitSuggestion,
   FutureSelfProfileGeneration,
   GoalBreakdown,
   GoalBreakdownResponse,

@@ -47,6 +47,13 @@ export const generatedTaskSchema = z
   })
   .strict();
 
+export const futureSelfHabitSuggestionSchema = generatedHabitSchema
+  .extend({
+    lifeAreaName: z.string().optional(),
+    goalTitle: z.string().optional(),
+  })
+  .strict();
+
 export const futureSelfLifeAreaSuggestionSchema = z
   .object({
     name: z.string().min(1),
@@ -63,6 +70,8 @@ export const futureSelfGenerationResponseSchema = z
     description: z.string().min(1),
     identityStatement: z.string().min(1),
     lifeAreas: z.array(futureSelfLifeAreaSuggestionSchema).min(1).max(8),
+    suggestedGoals: z.array(generatedGoalSchema).default([]),
+    suggestedHabits: z.array(futureSelfHabitSuggestionSchema).default([]),
   })
   .strict();
 
@@ -195,6 +204,7 @@ export const nextActionsResponseSchema = z
 export type HabitGenerationResponse = z.infer<typeof habitGenerationResponseSchema>;
 export type FutureSelfGenerationResponse = z.infer<typeof futureSelfGenerationResponseSchema>;
 export type FutureSelfProfileGeneration = z.infer<typeof futureSelfProfileGenerationSchema>;
+export type FutureSelfHabitSuggestion = z.infer<typeof futureSelfHabitSuggestionSchema>;
 export type GoalsFromFutureSelfResponse = z.infer<typeof goalsFromFutureSelfResponseSchema>;
 export type GoalsFromFutureSelf = z.infer<typeof goalsFromFutureSelfSchema>;
 export type GoalBreakdownResponse = z.infer<typeof goalBreakdownResponseSchema>;

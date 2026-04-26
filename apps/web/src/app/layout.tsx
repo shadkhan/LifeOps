@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "LifeOps",
   description: "A personal operating system for future self, goals, habits, tasks, notes, and review.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -1,14 +1,14 @@
-import { CalendarCheck, Flame, Plus, Sparkles } from "lucide-react";
+import { CalendarCheck, Flame, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getGoalOptionsForHabits, getHabitsForUser, getTodayDate } from "@/lib/db/habits";
 import { cn } from "@/lib/utils";
 import {
   CompleteHabitButton,
-  CreateHabitForm,
   DeleteHabitButton,
-  EditHabitForm,
+  EditHabitPanel,
   MissedHabitReflectionForm,
+  NewHabitPanel,
 } from "./forms";
 import { AIHabitSuggestions } from "./ai-habit-suggestions";
 
@@ -30,17 +30,7 @@ export default async function HabitsPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Create habit</CardTitle>
-            <Plus className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <CreateHabitForm goals={goals} />
-          </CardContent>
-        </Card>
-
+      <section>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Today&apos;s habits</CardTitle>
@@ -91,15 +81,19 @@ export default async function HabitsPage() {
         </Card>
       </section>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>AI habit suggestions</CardTitle>
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <AIHabitSuggestions goals={goals} />
-        </CardContent>
-      </Card>
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <NewHabitPanel goals={goals} />
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>AI habit suggestions</CardTitle>
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <AIHabitSuggestions goals={goals} />
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="space-y-4">
         <div>
@@ -163,10 +157,7 @@ export default async function HabitsPage() {
                     )}
                   </div>
 
-                  <div className="border-t pt-5">
-                    <p className="mb-3 text-sm font-medium">Edit habit</p>
-                    <EditHabitForm goals={goals} habit={habit} />
-                  </div>
+                  <EditHabitPanel goals={goals} habit={habit} />
                 </CardContent>
               </Card>
             ))}

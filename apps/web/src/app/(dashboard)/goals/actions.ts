@@ -77,6 +77,7 @@ export async function createGoalAction(_: GoalActionState, formData: FormData): 
     where: {
       id: parsed.data.lifeAreaId,
       userId: user.id,
+      deletedAt: null,
     },
     select: { id: true },
   });
@@ -120,6 +121,7 @@ export async function updateGoalAction(_: GoalActionState, formData: FormData): 
     where: {
       id: parsed.data.lifeAreaId,
       userId: user.id,
+      deletedAt: null,
     },
     select: { id: true },
   });
@@ -205,7 +207,7 @@ export async function generateGoalsFromFutureSelfAction(
   const user = await requireCurrentUser();
   const futureSelf = await db.futureSelf.findUnique({
     where: { userId: user.id },
-    include: { lifeAreas: true },
+    include: { lifeAreas: { where: { deletedAt: null } } },
   });
 
   if (!futureSelf || futureSelf.lifeAreas.length === 0) {
@@ -251,7 +253,7 @@ export async function saveGeneratedGoalsAction(_: GoalActionState, formData: For
   }
 
   const lifeAreas = await db.lifeArea.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, deletedAt: null },
     select: { id: true, name: true },
   });
 

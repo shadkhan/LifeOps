@@ -1,8 +1,9 @@
 "use client";
 
 import type { Priority, TaskStatus } from "@lifeops/db";
-import { Check, LoaderCircle, Trash2 } from "lucide-react";
-import { useActionState } from "react";
+import { Check, LoaderCircle, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   completeTaskAction,
@@ -53,6 +54,33 @@ export function CreateTaskForm({ goals }: { goals: TaskGoalOption[] }) {
   );
 }
 
+export function NewTaskPanel({ goals }: { goals: TaskGoalOption[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="rounded-md border bg-card p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold">Create a task for one concrete next action.</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Add due dates and linked goals when they help you decide what to do next.
+          </p>
+        </div>
+        <Button onClick={() => setIsOpen((current) => !current)} type="button">
+          {isOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {isOpen ? "Close" : "New task"}
+        </Button>
+      </div>
+
+      {isOpen ? (
+        <div className="mt-4 border-t pt-4">
+          <CreateTaskForm goals={goals} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function EditTaskForm({
   goals,
   task,
@@ -61,6 +89,13 @@ export function EditTaskForm({
   task: TaskFormValue;
 }) {
   const [state, action, pending] = useActionState(updateTaskAction, initialState);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state.ok && state.message === "Task updated.") {
+      router.refresh();
+    }
+  }, [router, state]);
 
   return (
     <TaskForm
@@ -72,6 +107,30 @@ export function EditTaskForm({
       submittingLabel="Saving..."
       task={task}
     />
+  );
+}
+
+export function EditTaskPanel({
+  goals,
+  task,
+}: {
+  goals: TaskGoalOption[];
+  task: TaskFormValue;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-t pt-4">
+      <Button onClick={() => setIsOpen((current) => !current)} type="button" variant="outline">
+        {isOpen ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+        {isOpen ? "Close edit" : "Edit task"}
+      </Button>
+      {isOpen ? (
+        <div className="mt-4 rounded-md border bg-muted/30 p-4">
+          <EditTaskForm goals={goals} task={task} />
+        </div>
+      ) : null}
+    </div>
   );
 }
 

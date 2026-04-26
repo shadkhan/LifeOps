@@ -72,7 +72,7 @@ export async function getGoalForUser(userId: string, goalId: string) {
 
 export async function getLifeAreasForGoalForms(userId: string) {
   return db.lifeArea.findMany({
-    where: { userId },
+    where: { userId, deletedAt: null },
     select: {
       id: true,
       name: true,

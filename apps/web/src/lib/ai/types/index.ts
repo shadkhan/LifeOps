@@ -24,7 +24,14 @@ export const aiProviderOptions: Array<{ value: AIProviderId; label: string }> = 
 export const aiModelOptions: Record<AIProviderId, string[]> = {
   groq: ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "meta-llama/llama-4-scout-17b-16e-instruct"],
   openai: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"],
-  anthropic: ["claude-3-5-haiku-latest", "claude-3-5-sonnet-latest"],
+  anthropic: [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-5-20250929",
+    "claude-sonnet-4-6",
+    "claude-opus-4-5-20251101",
+    "claude-opus-4-6",
+    "claude-opus-4-7",
+  ],
 };
 
 export type AIMessage = {
@@ -46,9 +53,20 @@ export type GenerateJsonInput<TSchema extends z.ZodType> = {
   maxTokens?: number;
 };
 
+export type AIUsage = {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+};
+
+export type GenerateJsonResult<TSchema extends z.ZodType> = {
+  data: z.infer<TSchema>;
+  usage?: AIUsage;
+};
+
 export type AIClient = {
   provider: AIProviderId;
-  generateJson<TSchema extends z.ZodType>(input: GenerateJsonInput<TSchema>): Promise<z.infer<TSchema>>;
+  generateJson<TSchema extends z.ZodType>(input: GenerateJsonInput<TSchema>): Promise<GenerateJsonResult<TSchema>>;
 };
 
 export type AIServiceResult<T> =
@@ -159,7 +177,7 @@ export const aiOutputSchemas = {
     schema: {
       type: "object",
       additionalProperties: false,
-      required: ["title", "description", "identityStatement", "lifeAreas"],
+      required: ["title", "description", "identityStatement", "lifeAreas", "suggestedGoals", "suggestedHabits"],
       properties: {
         title: { type: "string" },
         description: { type: "string" },
@@ -181,6 +199,39 @@ export const aiOutputSchemas = {
               vision: { type: "string" },
               currentReality: { type: "string" },
               gap: { type: "string" },
+            },
+          },
+        },
+        suggestedGoals: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["title", "description", "lifeAreaName", "priority", "reason"],
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              lifeAreaName: { type: "string" },
+              priority: { type: "string", enum: ["low", "medium", "high"] },
+              targetDate: { type: "string" },
+              reason: { type: "string" },
+            },
+          },
+        },
+        suggestedHabits: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["name", "frequency", "reason"],
+            properties: {
+              name: { type: "string" },
+              description: { type: "string" },
+              frequency: { type: "string", enum: ["daily", "weekdays", "weekly", "monthly", "custom"] },
+              suggestedReminderTime: { type: "string" },
+              reason: { type: "string" },
+              lifeAreaName: { type: "string" },
+              goalTitle: { type: "string" },
             },
           },
         },

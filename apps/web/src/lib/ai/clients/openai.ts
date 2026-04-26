@@ -4,6 +4,11 @@ import { generateWithRetry, getRequestError } from "./json";
 
 type OpenAIChatResponse = {
   choices?: Array<{ message?: { content?: string } }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 };
 
 export function createOpenAIClient(apiKey: string): AIClient {
@@ -43,7 +48,14 @@ export function createOpenAIClient(apiKey: string): AIClient {
           throw new Error("OpenAI returned an empty response.");
         }
 
-        return content;
+        return {
+          content,
+          usage: {
+            inputTokens: body.usage?.prompt_tokens,
+            outputTokens: body.usage?.completion_tokens,
+            totalTokens: body.usage?.total_tokens,
+          },
+        };
       }),
   };
 }

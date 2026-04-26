@@ -1,5 +1,6 @@
 "use client";
 
+import type { FutureSelfGenerationResponse } from "@lifeops/shared";
 import { useActionState, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import {
   type ActionState,
   type GenerateFutureSelfState,
 } from "./actions";
+import type { FutureSelfProfileDraft } from "./forms";
 
 const initialGenerateState: GenerateFutureSelfState = {
   ok: false,
@@ -21,7 +23,11 @@ const initialSaveState: ActionState = {
   message: "",
 };
 
-export function AIFutureSelfGenerator() {
+export function AIFutureSelfGenerator({
+  onProfileDraft,
+}: {
+  onProfileDraft?: (draft: FutureSelfProfileDraft) => void;
+}) {
   const [generateState, generateAction, isGenerating] = useActionState(generateFutureSelfAction, initialGenerateState);
   const [saveState, saveAction, isSaving] = useActionState(saveGeneratedFutureSelfAction, initialSaveState);
   const [selected, setSelected] = useState<string[]>([]);
@@ -29,8 +35,9 @@ export function AIFutureSelfGenerator() {
   useEffect(() => {
     if (generateState.suggestion) {
       setSelected(generateState.suggestion.lifeAreas.map((_, index) => String(index)));
+      onProfileDraft?.(toProfileDraft(generateState.suggestion));
     }
-  }, [generateState.suggestion]);
+  }, [generateState.suggestion, onProfileDraft]);
 
   return (
     <div className="space-y-4">
@@ -61,6 +68,9 @@ export function AIFutureSelfGenerator() {
             <p className="text-sm font-semibold">{generateState.suggestion.title}</p>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">{generateState.suggestion.identityStatement}</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{generateState.suggestion.description}</p>
+            <p className="mt-2 text-xs font-medium text-amber-700">
+              This profile draft has also been staged in the main Future Version form.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -99,4 +109,12 @@ export function AIFutureSelfGenerator() {
       ) : null}
     </div>
   );
+}
+
+function toProfileDraft(suggestion: FutureSelfGenerationResponse): FutureSelfProfileDraft {
+  return {
+    title: suggestion.title,
+    description: suggestion.description ?? "",
+    identityStatement: suggestion.identityStatement,
+  };
 }

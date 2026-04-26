@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { AIMessage, GenerateJsonInput } from "@/lib/ai/types";
+import type { AIMessage, AIUsage, GenerateJsonInput, GenerateJsonResult } from "@/lib/ai/types";
 
 export function withJsonInstruction(messages: AIMessage[], outputName: string) {
   return [
@@ -26,12 +26,17 @@ export function getRequestError(provider: string, status: number, body: unknown)
 
 export async function generateWithRetry<TSchema extends z.ZodType>(
   input: GenerateJsonInput<TSchema>,
-  generate: (messages: AIMessage[]) => Promise<string>,
-) {
+  generate: (messages: AIMessage[]) => Promise<{ content: string; usage?: AIUsage }>,
+): Promise<GenerateJsonResult<TSchema>> {
   const firstMessages = withJsonInstruction(input.messages, input.output.name);
+  let firstUsage: AIUsage | undefined;
 
   try {
-    return parseJsonWithSchema(await generate(firstMessages), input.schema);
+    const response = await generate(firstMessages);
+    return {
+      data: parseJsonWithSchema(response.content, input.schema),
+      usage: response.usage,
+    };
   } catch (error) {
     const retryMessages: AIMessage[] = [
       ...firstMessages,
@@ -40,8 +45,39 @@ export async function generateWithRetry<TSchema extends z.ZodType>(
         content: "The previous response was invalid. Return only corrected JSON matching the requested schema.",
       },
     ];
-    return parseJsonWithSchema(await generate(retryMessages), input.schema);
+    if (error instanceof Error && "usage" in error) {
+      firstUsage = (error as { usage?: AIUsage }).usage;
+    }
+    const response = await generate(retryMessages);
+    return {
+      data: parseJsonWithSchema(response.content, input.schema),
+      usage: combineUsage(firstUsage, response.usage),
+    };
   }
+}
+
+function combineUsage(first?: AIUsage, second?: AIUsage): AIUsage | undefined {
+  if (!first) {
+    return second;
+  }
+
+  if (!second) {
+    return first;
+  }
+
+  return {
+    inputTokens: addOptional(first.inputTokens, second.inputTokens),
+    outputTokens: addOptional(first.outputTokens, second.outputTokens),
+    totalTokens: addOptional(first.totalTokens, second.totalTokens),
+  };
+}
+
+function addOptional(first?: number, second?: number) {
+  if (first === undefined && second === undefined) {
+    return undefined;
+  }
+
+  return (first ?? 0) + (second ?? 0);
 }
 
 function extractJson(raw: string) {

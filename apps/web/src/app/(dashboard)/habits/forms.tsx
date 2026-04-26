@@ -1,8 +1,9 @@
 "use client";
 
 import type { HabitFrequency, HabitStatus } from "@lifeops/db";
-import { Check, LoaderCircle, Trash2 } from "lucide-react";
-import { useActionState } from "react";
+import { Check, LoaderCircle, Pencil, Plus, Trash2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   completeHabitTodayAction,
@@ -55,6 +56,33 @@ export function CreateHabitForm({ goals }: { goals: HabitGoalOption[] }) {
   );
 }
 
+export function NewHabitPanel({ goals }: { goals: HabitGoalOption[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="rounded-md border bg-card p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold">Create a habit when a behavior should repeat.</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Keep it small, link it to a goal when useful, then track it from Today&apos;s habits.
+          </p>
+        </div>
+        <Button onClick={() => setIsOpen((current) => !current)} type="button">
+          {isOpen ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {isOpen ? "Close" : "New habit"}
+        </Button>
+      </div>
+
+      {isOpen ? (
+        <div className="mt-4 border-t pt-4">
+          <CreateHabitForm goals={goals} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function EditHabitForm({
   goals,
   habit,
@@ -63,6 +91,13 @@ export function EditHabitForm({
   habit: HabitFormValue;
 }) {
   const [state, action, pending] = useActionState(updateHabitAction, initialState);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state.ok && state.message === "Habit updated.") {
+      router.refresh();
+    }
+  }, [router, state]);
 
   return (
     <HabitForm
@@ -74,6 +109,30 @@ export function EditHabitForm({
       submitLabel="Save habit"
       submittingLabel="Saving..."
     />
+  );
+}
+
+export function EditHabitPanel({
+  goals,
+  habit,
+}: {
+  goals: HabitGoalOption[];
+  habit: HabitFormValue;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-t pt-4">
+      <Button onClick={() => setIsOpen((current) => !current)} type="button" variant="outline">
+        {isOpen ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
+        {isOpen ? "Close edit" : "Edit habit"}
+      </Button>
+      {isOpen ? (
+        <div className="mt-4 rounded-md border bg-muted/30 p-4">
+          <EditHabitForm goals={goals} habit={habit} />
+        </div>
+      ) : null}
+    </div>
   );
 }
 

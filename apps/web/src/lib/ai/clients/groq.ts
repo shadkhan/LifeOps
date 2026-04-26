@@ -4,6 +4,11 @@ import { generateWithRetry, getRequestError } from "./json";
 
 type GroqChatResponse = {
   choices?: Array<{ message?: { content?: string } }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
 };
 
 export function createGroqClient(apiKey: string): AIClient {
@@ -42,7 +47,14 @@ export function createGroqClient(apiKey: string): AIClient {
           throw new Error("Groq returned an empty response.");
         }
 
-        return content;
+        return {
+          content,
+          usage: {
+            inputTokens: body.usage?.prompt_tokens,
+            outputTokens: body.usage?.completion_tokens,
+            totalTokens: body.usage?.total_tokens,
+          },
+        };
       }),
   };
 }

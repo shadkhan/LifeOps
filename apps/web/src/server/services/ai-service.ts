@@ -15,11 +15,12 @@ import {
   summarizeNotePrompt,
   suggestNextActionsForGoalPrompt,
 } from "@/lib/ai/prompts";
-import { createAIClient } from "@/lib/ai/clients";
+import { createAIClient, getServerEnv } from "@/lib/ai/clients";
 import {
   aiOutputSchemas,
   aiModelOptions,
   aiZodSchemas,
+  type AIUsage,
   type AIProviderId,
   type AIServiceResult,
   type BreakDownGoalInput,
@@ -35,8 +36,32 @@ import {
   type WeeklyReviewInput,
 } from "@/lib/ai/types";
 
-const DEFAULT_PROVIDER: AIProvider = "groq";
-const DEFAULT_MODEL = aiModelOptions.groq[0] ?? "llama-3.1-8b-instant";
+const DEFAULT_PROVIDER = getDefaultProvider();
+const DEFAULT_MODEL = getDefaultModel(DEFAULT_PROVIDER);
+const AI_LOG_LIMIT = 50;
+
+const PRICE_PER_MILLION_TOKENS: Record<string, { input: number; output: number }> = {
+  "anthropic:claude-3-5-haiku-latest": { input: 0.8, output: 4 },
+  "anthropic:claude-3-5-haiku-20241022": { input: 0.8, output: 4 },
+  "anthropic:claude-3-5-sonnet-latest": { input: 3, output: 15 },
+  "anthropic:claude-3-5-sonnet-20241022": { input: 3, output: 15 },
+  "anthropic:claude-3-7-sonnet-latest": { input: 3, output: 15 },
+  "anthropic:claude-3-7-sonnet-20250219": { input: 3, output: 15 },
+  "anthropic:claude-sonnet-4-0": { input: 3, output: 15 },
+  "anthropic:claude-sonnet-4-20250514": { input: 3, output: 15 },
+  "anthropic:claude-haiku-4-5-20251001": { input: 1, output: 5 },
+  "anthropic:claude-sonnet-4-5-20250929": { input: 3, output: 15 },
+  "anthropic:claude-sonnet-4-6": { input: 3, output: 15 },
+  "anthropic:claude-opus-4-5-20251101": { input: 15, output: 75 },
+  "anthropic:claude-opus-4-6": { input: 15, output: 75 },
+  "anthropic:claude-opus-4-7": { input: 15, output: 75 },
+  "openai:gpt-4o-mini": { input: 0.15, output: 0.6 },
+  "openai:gpt-4o": { input: 2.5, output: 10 },
+  "openai:gpt-4.1-mini": { input: 0.4, output: 1.6 },
+  "groq:llama-3.1-8b-instant": { input: 0.05, output: 0.08 },
+  "groq:llama-3.3-70b-versatile": { input: 0.59, output: 0.79 },
+  "groq:meta-llama/llama-4-scout-17b-16e-instruct": { input: 0.11, output: 0.34 },
+};
 
 export async function getAISettings() {
   return db.aiSettings.upsert({
@@ -45,7 +70,7 @@ export async function getAISettings() {
     create: {
       id: "global",
       provider: DEFAULT_PROVIDER,
-      model: process.env.GROQ_MODEL || DEFAULT_MODEL,
+      model: DEFAULT_MODEL,
     },
   });
 }
@@ -63,6 +88,42 @@ export async function updateAISettings(input: { provider: AIProvider; model: str
       model: input.model,
     },
   });
+}
+
+export async function getAIUsageDashboard() {
+  const logs = await db.aiUsageLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: AI_LOG_LIMIT,
+  });
+
+  const [total, successful, failed, fallback, totals] = await Promise.all([
+    db.aiUsageLog.count(),
+    db.aiUsageLog.count({ where: { status: "success" } }),
+    db.aiUsageLog.count({ where: { status: "error" } }),
+    db.aiUsageLog.count({ where: { status: "fallback" } }),
+    db.aiUsageLog.aggregate({
+      _sum: {
+        inputTokens: true,
+        outputTokens: true,
+        totalTokens: true,
+        estimatedCostUsd: true,
+      },
+    }),
+  ]);
+
+  return {
+    logs,
+    summary: {
+      total,
+      successful,
+      failed,
+      fallback,
+      inputTokens: totals._sum.inputTokens ?? 0,
+      outputTokens: totals._sum.outputTokens ?? 0,
+      totalTokens: totals._sum.totalTokens ?? 0,
+      estimatedCostUsd: Number(totals._sum.estimatedCostUsd ?? 0),
+    },
+  };
 }
 
 export async function generateHabitsFromGoal(
@@ -194,10 +255,11 @@ async function runAI<TKey extends keyof typeof aiOutputSchemas & keyof typeof ai
   const settings = await getAISettings();
   const provider = settings.provider.toLowerCase() as AIProviderId;
   const model = settings.model;
+  const startedAt = Date.now();
 
   try {
     const client = createAIClient(settings.provider);
-    const data = await client.generateJson({
+    const result = await client.generateJson({
       model,
       output: aiOutputSchemas[key],
       schema: aiZodSchemas[key],
@@ -207,17 +269,35 @@ async function runAI<TKey extends keyof typeof aiOutputSchemas & keyof typeof ai
       ],
       temperature: 0.2,
     });
+    await logAIUsage({
+      feature: key,
+      provider,
+      model,
+      status: "success",
+      usage: result.usage,
+      latencyMs: Date.now() - startedAt,
+    });
 
     return {
       ok: true,
-      data,
+      data: result.data,
       provider,
       model,
     };
   } catch (error) {
     const parsedFallback = aiZodSchemas[key].safeParse(fallback);
+    const safeError = getSafeErrorMessage(error);
 
     if (parsedFallback.success) {
+      await logAIUsage({
+        feature: key,
+        provider,
+        model,
+        status: "fallback",
+        latencyMs: Date.now() - startedAt,
+        errorMessage: safeError,
+      });
+
       return {
         ok: true,
         data: parsedFallback.data,
@@ -226,19 +306,91 @@ async function runAI<TKey extends keyof typeof aiOutputSchemas & keyof typeof ai
       };
     }
 
+    await logAIUsage({
+      feature: key,
+      provider,
+      model,
+      status: "error",
+      latencyMs: Date.now() - startedAt,
+      errorMessage: safeError,
+    });
+
     return {
       ok: false,
-      error: getSafeErrorMessage(error),
+      error: safeError,
       provider,
       model,
     };
   }
 }
 
+async function logAIUsage(input: {
+  feature: string;
+  provider: AIProviderId;
+  model: string;
+  status: "success" | "fallback" | "error";
+  usage?: AIUsage;
+  latencyMs: number;
+  errorMessage?: string;
+}) {
+  try {
+    await db.aiUsageLog.create({
+      data: {
+        feature: input.feature,
+        provider: input.provider,
+        model: input.model,
+        status: input.status,
+        inputTokens: input.usage?.inputTokens,
+        outputTokens: input.usage?.outputTokens,
+        totalTokens: input.usage?.totalTokens,
+        estimatedCostUsd: estimateCostUsd(input.provider, input.model, input.usage),
+        latencyMs: input.latencyMs,
+        errorMessage: input.errorMessage,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to write AI usage log", error);
+  }
+}
+
+function estimateCostUsd(provider: AIProviderId, model: string, usage?: AIUsage) {
+  const rate = PRICE_PER_MILLION_TOKENS[`${provider}:${model}`];
+  if (!rate || !usage) {
+    return undefined;
+  }
+
+  const inputCost = ((usage.inputTokens ?? 0) / 1_000_000) * rate.input;
+  const outputCost = ((usage.outputTokens ?? 0) / 1_000_000) * rate.output;
+  return Number((inputCost + outputCost).toFixed(6));
+}
+
+function getDefaultProvider(): AIProvider {
+  const envProvider = getServerEnv("AI_PROVIDER")?.toLowerCase();
+  if (envProvider === "openai" || envProvider === "anthropic" || envProvider === "groq") {
+    return envProvider;
+  }
+
+  return "groq";
+}
+
+function getDefaultModel(provider: AIProvider) {
+  if (provider === "anthropic") {
+    return getServerEnv("ANTHROPIC_MODEL") || aiModelOptions.anthropic[0] || "claude-3-5-haiku-latest";
+  }
+
+  if (provider === "openai") {
+    return getServerEnv("OPENAI_DEFAULT_MODEL") || aiModelOptions.openai[0] || "gpt-4o-mini";
+  }
+
+  return getServerEnv("GROQ_DEFAULT_MODEL") || getServerEnv("GROQ_MODEL") || aiModelOptions.groq[0] || "llama-3.1-8b-instant";
+}
+
 function fallbackFutureSelf(prompt: string) {
   return {
     title: "Future Self Draft",
-    description: prompt || "A calm, practical version of myself who acts consistently on what matters.",
+    description:
+      prompt ||
+      "This future self lives with clearer priorities, steadier energy, and a practical rhythm for making progress. The profile balances focused work, health, reflection, and consistent execution without relying on intensity or burnout.",
     identityStatement: "I am becoming someone who turns clear intentions into steady daily action.",
     lifeAreas: [
       {
@@ -254,6 +406,41 @@ function fallbackFutureSelf(prompt: string) {
         vision: "Make consistent progress on meaningful work.",
         currentReality: "Needs clearer weekly priorities.",
         gap: "Connect daily tasks to larger goals.",
+      },
+    ],
+    suggestedGoals: [
+      {
+        title: "Build a consistent weekly execution rhythm",
+        description: "Choose, complete, and review a small set of meaningful weekly actions.",
+        lifeAreaName: "Career",
+        priority: "medium" as const,
+        reason: "A weekly rhythm supports disciplined progress without overloading the day.",
+      },
+      {
+        title: "Create a simple health baseline",
+        description: "Build repeatable habits that protect energy and focus.",
+        lifeAreaName: "Health",
+        priority: "medium" as const,
+        reason: "Energy is a foundation for the future self described in the prompt.",
+      },
+    ],
+    suggestedHabits: [
+      {
+        name: "Daily priority review",
+        description: "Pick the one action that best supports the future self today.",
+        frequency: "daily" as const,
+        suggestedReminderTime: "09:00",
+        reason: "A small planning ritual makes consistency visible.",
+        lifeAreaName: "Career",
+        goalTitle: "Build a consistent weekly execution rhythm",
+      },
+      {
+        name: "Weekly progress reflection",
+        description: "Review what moved forward and choose next week's first action.",
+        frequency: "weekly" as const,
+        reason: "Reflection keeps goals honest and adjustable.",
+        lifeAreaName: "Career",
+        goalTitle: "Build a consistent weekly execution rhythm",
       },
     ],
   };
@@ -316,7 +503,12 @@ function fallbackTasks(title: string, sourceType: "goal" | "habit" | "note" | "i
 
 function getSafeErrorMessage(error: unknown) {
   if (error instanceof Error) {
-    if (error.message.includes("API_KEY")) {
+    if (
+      error.message.includes("API_KEY") ||
+      error.message.includes("request failed with status") ||
+      error.message.includes("returned an empty response") ||
+      error.message.includes("AI response did not contain JSON")
+    ) {
       return error.message;
     }
 

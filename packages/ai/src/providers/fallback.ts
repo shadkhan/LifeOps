@@ -35,6 +35,24 @@ export function createFallbackJSON<TSchema extends z.ZodType>(schema: TSchema): 
           vision: "Make consistent progress on meaningful work.",
         },
       ],
+      suggestedGoals: [
+        {
+          title: "Build a steady weekly progress rhythm",
+          description: "Create a simple routine for choosing, completing, and reviewing important work.",
+          lifeAreaName: "Career",
+          priority: "medium",
+          reason: "A fallback goal keeps progress moving while AI is unavailable.",
+        },
+      ],
+      suggestedHabits: [
+        {
+          name: "Weekly progress review",
+          frequency: "weekly",
+          reason: "A review keeps the goal current and measurable.",
+          lifeAreaName: "Career",
+          goalTitle: "Build a steady weekly progress rhythm",
+        },
+      ],
     },
     {
       goals: [

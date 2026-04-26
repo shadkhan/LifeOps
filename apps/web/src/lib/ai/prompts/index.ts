@@ -25,7 +25,12 @@ export const lifeOpsAISystemPrompt = [
 export function generateFutureSelfProfilePrompt(input: GenerateFutureSelfInput) {
   return [
     "Generate a Future Self profile from the user's textbox prompt.",
-    "Return a concise profile with life areas. Do not assume sensitive details not supplied.",
+    "Return a concise profile with life areas, 3-6 suggested goals, and 3-6 suggested habits.",
+    "Make description and identityStatement clearly different.",
+    "description must be a 2-4 sentence third-person or neutral profile summary describing the future lifestyle, priorities, behaviors, and outcomes.",
+    'identityStatement must be one short first-person present-tense identity anchor starting with "I am..." and should read like a daily self-belief, not a summary paragraph.',
+    "Suggested goals must reference one of the life area names. Suggested habits may reference a suggested goalTitle.",
+    "Do not assume sensitive details not supplied.",
     `Context: ${stringifyForPrompt(input)}`,
   ].join("\n\n");
 }

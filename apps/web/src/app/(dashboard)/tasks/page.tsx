@@ -6,7 +6,7 @@ import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getGoalOptionsForTasks, getTasksForUser, type TaskView } from "@/lib/db/tasks";
 import { cn } from "@/lib/utils";
 import { AITaskGenerator } from "./ai-task-generator";
-import { CompleteTaskButton, CreateTaskForm, DeleteTaskButton, EditTaskForm } from "./forms";
+import { CompleteTaskButton, DeleteTaskButton, EditTaskPanel, NewTaskPanel } from "./forms";
 
 const taskViews: Array<{ value: TaskView; label: string }> = [
   { value: "today", label: "Today" },
@@ -48,23 +48,15 @@ export default async function TasksPage({
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Create task</CardTitle>
-            <CheckSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <CreateTaskForm goals={goals} />
-          </CardContent>
-        </Card>
+      <NewTaskPanel goals={goals} />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle>Filters</CardTitle>
+      <section className="space-y-4">
+        <div className="rounded-md border bg-card p-4">
+          <div className="mb-4 flex items-center gap-2 text-sm font-medium">
             <Filter className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="space-y-5">
+            Filters
+          </div>
+          <div className="grid gap-4 lg:grid-cols-[0.8fr_0.9fr_1.3fr]">
             <FilterGroup label="View">
               {taskViews.map((item) => (
                 <FilterLink
@@ -98,26 +90,16 @@ export default async function TasksPage({
                 />
               ))}
             </FilterGroup>
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>AI task creator</CardTitle>
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <AITaskGenerator goals={goals} />
-        </CardContent>
-      </Card>
-
-      <section className="space-y-4">
-        <div>
-          <h3 className="text-xl font-semibold">{taskViews.find((item) => item.value === view)?.label} tasks</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {tasks.length} {tasks.length === 1 ? "task" : "tasks"} shown
-          </p>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-xl font-semibold">{taskViews.find((item) => item.value === view)?.label} tasks</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {tasks.length} {tasks.length === 1 ? "task" : "tasks"} shown
+            </p>
+          </div>
         </div>
 
         {tasks.length ? (
@@ -154,10 +136,7 @@ export default async function TasksPage({
                     </div>
                   </div>
 
-                  <div className="border-t pt-5">
-                    <p className="mb-3 text-sm font-medium">Edit task</p>
-                    <EditTaskForm goals={goals} task={task} />
-                  </div>
+                  <EditTaskPanel goals={goals} task={task} />
                 </CardContent>
               </Card>
             ))}
@@ -178,6 +157,21 @@ export default async function TasksPage({
           </Card>
         )}
       </section>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle>AI task creator</CardTitle>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Use this when you want LifeOps to turn an idea, note, goal, or habit into reviewable task suggestions.
+            </p>
+          </div>
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <AITaskGenerator goals={goals} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

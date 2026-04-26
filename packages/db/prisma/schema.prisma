@@ -74,6 +74,7 @@ model User {
   notes         Note[]
   dailyPlans    DailyPlan[]
   weeklyReviews WeeklyReview[]
+  aiUsageLogs   AiUsageLog[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -99,6 +100,7 @@ model LifeArea {
   vision       String?
   currentReality String?
   gap          String?
+  deletedAt    DateTime?
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   futureSelf   FutureSelf? @relation(fields: [futureSelfId], references: [id], onDelete: SetNull)
   goals        Goal[]
@@ -107,6 +109,7 @@ model LifeArea {
   updatedAt    DateTime    @updatedAt
 
   @@index([userId])
+  @@index([userId, deletedAt])
 }
 
 model Goal {
@@ -255,4 +258,26 @@ model AiSettings {
   model     String     @default("llama-3.1-8b-instant")
   updatedAt DateTime   @updatedAt
   createdAt DateTime   @default(now())
+}
+
+model AiUsageLog {
+  id               String   @id @default(cuid())
+  userId           String?
+  feature          String
+  provider         String
+  model            String
+  status           String
+  inputTokens      Int?
+  outputTokens     Int?
+  totalTokens      Int?
+  estimatedCostUsd Decimal? @db.Decimal(12, 6)
+  latencyMs        Int
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([provider, model])
+  @@index([status])
+  @@index([userId])
 }

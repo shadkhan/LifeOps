@@ -7,6 +7,10 @@ type AnthropicResponse = {
     | { type: "text"; text: string }
     | { type: "tool_use"; name: string; input: unknown }
   >;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+  };
 };
 
 export function createAnthropicClient(apiKey: string): AIClient {
@@ -60,7 +64,17 @@ export function createAnthropicClient(apiKey: string): AIClient {
         );
 
         if (toolUse) {
-          return JSON.stringify(toolUse.input);
+          return {
+            content: JSON.stringify(toolUse.input),
+            usage: {
+              inputTokens: body.usage?.input_tokens,
+              outputTokens: body.usage?.output_tokens,
+              totalTokens:
+                body.usage?.input_tokens === undefined && body.usage?.output_tokens === undefined
+                  ? undefined
+                  : (body.usage?.input_tokens ?? 0) + (body.usage?.output_tokens ?? 0),
+            },
+          };
         }
 
         const text = body.content?.find((item): item is { type: "text"; text: string } => item.type === "text")?.text;
@@ -68,7 +82,17 @@ export function createAnthropicClient(apiKey: string): AIClient {
           throw new Error("Anthropic returned an empty response.");
         }
 
-        return text;
+        return {
+          content: text,
+          usage: {
+            inputTokens: body.usage?.input_tokens,
+            outputTokens: body.usage?.output_tokens,
+            totalTokens:
+              body.usage?.input_tokens === undefined && body.usage?.output_tokens === undefined
+                ? undefined
+                : (body.usage?.input_tokens ?? 0) + (body.usage?.output_tokens ?? 0),
+          },
+        };
       }),
   };
 }

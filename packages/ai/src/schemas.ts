@@ -8,6 +8,7 @@ export {
   dailyPlannerSchema,
   dailyPlannerSuggestedTaskSchema,
   futureSelfGenerationResponseSchema,
+  futureSelfHabitSuggestionSchema,
   futureSelfLifeAreaSuggestionSchema,
   futureSelfProfileGenerationSchema,
   generatedGoalSchema,

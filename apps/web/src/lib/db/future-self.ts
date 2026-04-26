@@ -5,6 +5,7 @@ export async function getFutureSelfForUser(userId: string) {
     where: { userId },
     include: {
       lifeAreas: {
+        where: { deletedAt: null },
         orderBy: { createdAt: "asc" },
       },
     },

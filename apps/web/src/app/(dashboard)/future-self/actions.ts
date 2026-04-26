@@ -192,6 +192,7 @@ export async function updateLifeAreaAction(_: ActionState, formData: FormData): 
     where: {
       id: id.data,
       userId: user.id,
+      deletedAt: null,
     },
     data: {
       name: parsed.data.name,
@@ -209,6 +210,35 @@ export async function updateLifeAreaAction(_: ActionState, formData: FormData): 
   revalidatePath("/future-self");
   revalidatePath("/dashboard");
   return successState("Life area updated.");
+}
+
+export async function deleteLifeAreaAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireCurrentUser();
+  const lifeAreaId = idSchema.safeParse(readString(formData, "lifeAreaId"));
+
+  if (!lifeAreaId.success) {
+    return errorState("Invalid life area.");
+  }
+
+  const result = await db.lifeArea.updateMany({
+    where: {
+      id: lifeAreaId.data,
+      userId: user.id,
+      deletedAt: null,
+    },
+    data: {
+      deletedAt: new Date(),
+    },
+  });
+
+  if (result.count === 0) {
+    return errorState("Life area not found.");
+  }
+
+  revalidatePath("/future-self");
+  revalidatePath("/dashboard");
+  revalidatePath("/goals");
+  return successState("Life area removed.");
 }
 
 function readString(formData: FormData, key: string) {
