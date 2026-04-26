@@ -158,6 +158,18 @@ function PlanReview({
           </p>
         </Section>
 
+        {plan.avoidList.length ? (
+          <Section title="Avoid today">
+            <div className="flex flex-wrap gap-2">
+              {plan.avoidList.map((item) => (
+                <span className="rounded-md border bg-muted/30 px-2 py-1 text-sm" key={item}>
+                  {item}
+                </span>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+
         <Section title="Reflection prompt">
           <p className="rounded-md border bg-muted/30 p-3 text-sm leading-6 text-muted-foreground">
             {plan.reflectionPrompt}

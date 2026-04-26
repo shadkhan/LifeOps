@@ -1,9 +1,10 @@
-import { BookOpenText, Link2, Search } from "lucide-react";
+import { BookOpenText, Link2, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getNoteLinkOptions, getNotesForUser, type NotesView } from "@/lib/db/notes";
 import { cn } from "@/lib/utils";
+import { AIIdeaExpander, AINoteSummary } from "./ai-note-tools";
 import { CreateNoteForm, DeleteNoteButton, EditNoteForm } from "./forms";
 
 const noteViews: Array<{ value: NotesView; label: string }> = [
@@ -92,6 +93,16 @@ export default async function NotesPage({
         </Card>
       </section>
 
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>AI idea expander</CardTitle>
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <AIIdeaExpander />
+        </CardContent>
+      </Card>
+
       <section className="space-y-4">
         <div>
           <h3 className="text-xl font-semibold">{noteViews.find((item) => item.value === view)?.label}</h3>
@@ -141,9 +152,7 @@ export default async function NotesPage({
                       <p className="mt-1 text-sm leading-6 text-emerald-900">{note.aiSummary}</p>
                     </div>
                   ) : (
-                    <div className="rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
-                      AI summary placeholder
-                    </div>
+                    <AINoteSummary noteId={note.id} />
                   )}
 
                   <div className="border-t pt-5">

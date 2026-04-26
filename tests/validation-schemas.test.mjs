@@ -3,6 +3,9 @@ import test from "node:test";
 
 import {
   dailyPlannerResponseSchema,
+  futureSelfGenerationResponseSchema,
+  goalBreakdownResponseSchema,
+  taskCreationResponseSchema,
   weeklyReviewResponseSchema,
 } from "../packages/shared/src/schemas/ai.ts";
 import {
@@ -83,4 +86,42 @@ test("weekly review AI schema includes patterns for aiContent storage", () => {
   });
 
   assert.deepEqual(parsed.patterns, ["Morning focus helped"]);
+});
+
+test("phase 2 future self AI schema requires reviewable life areas", () => {
+  const parsed = futureSelfGenerationResponseSchema.parse({
+    title: "Calm builder",
+    description: "A focused future self profile.",
+    identityStatement: "I build steadily and protect what matters.",
+    lifeAreas: [
+      {
+        name: "Health",
+        type: "health",
+        vision: "Have enough energy for focused work.",
+      },
+    ],
+  });
+
+  assert.equal(parsed.lifeAreas[0].type, "health");
+});
+
+test("phase 2 goal breakdown AI schema validates selectable tasks and habits", () => {
+  const parsed = goalBreakdownResponseSchema.parse({
+    summary: "Break the goal into steady progress.",
+    milestones: ["First milestone"],
+    habits: [{ name: "Daily review", frequency: "daily", reason: "Keeps the goal visible." }],
+    tasks: [{ title: "Pick next step", priority: "medium", sourceType: "goal", reason: "Clarifies action." }],
+    risks: [],
+    successMetrics: ["Weekly progress update"],
+  });
+
+  assert.equal(parsed.tasks[0].sourceType, "goal");
+});
+
+test("phase 2 task creation AI schema validates source-aware tasks", () => {
+  const parsed = taskCreationResponseSchema.parse({
+    tasks: [{ title: "Write first draft", priority: "low", sourceType: "idea", reason: "Creates a starting point." }],
+  });
+
+  assert.equal(parsed.tasks[0].priority, "low");
 });

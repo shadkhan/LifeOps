@@ -1,10 +1,11 @@
 import { idSchema, taskStatusSchema } from "@lifeops/shared";
-import { CalendarDays, CheckSquare, Filter } from "lucide-react";
+import { CalendarDays, CheckSquare, Filter, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getGoalOptionsForTasks, getTasksForUser, type TaskView } from "@/lib/db/tasks";
 import { cn } from "@/lib/utils";
+import { AITaskGenerator } from "./ai-task-generator";
 import { CompleteTaskButton, CreateTaskForm, DeleteTaskButton, EditTaskForm } from "./forms";
 
 const taskViews: Array<{ value: TaskView; label: string }> = [
@@ -100,6 +101,16 @@ export default async function TasksPage({
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>AI task creator</CardTitle>
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <AITaskGenerator goals={goals} />
+        </CardContent>
+      </Card>
 
       <section className="space-y-4">
         <div>

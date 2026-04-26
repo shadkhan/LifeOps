@@ -1,5 +1,5 @@
 import { idSchema } from "@lifeops/shared";
-import { ArrowLeft, CalendarDays, CheckSquare, Flame, Target } from "lucide-react";
+import { ArrowLeft, CalendarDays, CheckSquare, Flame, Sparkles, Target } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getGoalForUser, getLifeAreasForGoalForms } from "@/lib/db/goals";
 import { cn } from "@/lib/utils";
+import { AIGoalBreakdown } from "../ai-goal-breakdown";
 import { AIHabitGenerator } from "../ai-habit-generator";
 import { DeleteGoalButton, EditGoalForm, GoalStatusForm } from "../forms";
 
@@ -88,6 +89,16 @@ export default async function GoalDetailPage({
         </Card>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle>AI goal breakdown</CardTitle>
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <AIGoalBreakdown goalId={goal.id} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle>AI habit suggestions</CardTitle>

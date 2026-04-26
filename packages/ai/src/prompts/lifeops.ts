@@ -1,39 +1,39 @@
 import "server-only";
 
-export const lifeOpsSystemPrompt =
-  "You are LifeOps, a private personal operating system assistant. Provide suggestions, not commands. Avoid medical, legal, or financial decisions. Return concise, auditable outputs.";
+import { lifeOpsSystemPrompt } from "../prompt-builder";
+import { buildDailyPlannerPrompt } from "./daily-planner";
+import { buildHabitsFromGoalPrompt } from "./habits";
+import { buildWeeklyReviewPrompt } from "./weekly-review";
+
+export { lifeOpsSystemPrompt };
 
 export function habitGenerationPrompt(goal: {
   title: string;
   description?: string | null;
   targetDate?: string | null;
 }): string {
-  return [
-    "Generate practical habits that help the user progress toward this goal.",
-    "Each habit must be specific, realistic, and suitable for user approval before saving.",
-    `Goal: ${goal.title}`,
-    goal.description ? `Description: ${goal.description}` : undefined,
-    goal.targetDate ? `Target date: ${goal.targetDate}` : undefined,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return buildHabitsFromGoalPrompt(goal);
 }
 
 export function dailyPlannerPrompt(context: string): string {
-  return [
-    "Create a suggested daily plan using only the provided context.",
-    "Prioritize active goals, due tasks, habits, and future-self alignment.",
-    "Do not invent private details that are not in the context.",
-    "Context:",
-    context,
-  ].join("\n");
+  return buildDailyPlannerPrompt({
+    date: new Date().toISOString().slice(0, 10),
+    futureSelf: null,
+    goals: [],
+    tasks: [],
+    habits: [],
+    notes: [{ title: "Raw planner context", body: context }],
+  });
 }
 
 export function weeklyReviewPrompt(context: string): string {
-  return [
-    "Create a weekly review from the provided goals, tasks, habits, and notes.",
-    "Focus on wins, gaps, habit consistency, goal progress, and next-week suggestions.",
-    "Context:",
-    context,
-  ].join("\n");
+  return buildWeeklyReviewPrompt({
+    weekStart: "",
+    weekEnd: "",
+    goals: [],
+    completedTasks: [],
+    incompleteTasks: [],
+    habitLogs: [],
+    notes: [{ title: "Raw weekly review context", body: context }],
+  });
 }

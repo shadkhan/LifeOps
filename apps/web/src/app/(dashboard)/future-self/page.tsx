@@ -2,6 +2,7 @@ import { Compass, Plus, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getFutureSelfForUser } from "@/lib/db/future-self";
+import { AIFutureSelfGenerator } from "./ai-future-self-generator";
 import { AddLifeAreaForm, EditLifeAreaForm, FutureSelfForm } from "./forms";
 
 export default async function FutureSelfPage() {
@@ -62,6 +63,16 @@ export default async function FutureSelfPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>AI future self draft</CardTitle>
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <AIFutureSelfGenerator />
+        </CardContent>
+      </Card>
 
       <section className="space-y-4">
         <div>

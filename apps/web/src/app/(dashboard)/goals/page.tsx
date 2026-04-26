@@ -1,11 +1,12 @@
 import type { GoalStatus } from "@lifeops/db";
 import { goalStatusSchema, idSchema } from "@lifeops/shared";
-import { ArrowRight, Filter, Target } from "lucide-react";
+import { ArrowRight, Filter, Sparkles, Target } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getGoalsForUser, getLifeAreasForGoalForms } from "@/lib/db/goals";
 import { cn } from "@/lib/utils";
+import { AIGoalGenerator } from "./ai-goal-generator";
 import { CreateGoalForm, DeleteGoalButton, GoalStatusForm } from "./forms";
 
 const statusFilters = ["all", ...goalStatusSchema.options] as const;
@@ -91,6 +92,16 @@ export default async function GoalsPage({
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>AI goals from Future Self</CardTitle>
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <AIGoalGenerator />
+        </CardContent>
+      </Card>
 
       <section className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

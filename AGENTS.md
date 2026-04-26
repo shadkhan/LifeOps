@@ -159,3 +159,33 @@ The app should run locally with:
 docker compose up -d
 pnpm dev
 ```
+
+## Phase 2 AI Layer Rules
+
+The AI layer must support:
+
+- Future Self generation
+- Goals from Future Self
+- Goal breakdown
+- Habits from Goal
+- Habit suggestions
+- Note summarization
+- Task creation
+- Idea expansion
+- Daily planner
+- Weekly review
+
+AI must always follow review-before-save.
+
+Never auto-save AI-generated goals, habits, tasks, or plans unless user explicitly confirms.
+
+All AI output must be:
+
+- JSON structured
+- Parsed safely
+- Validated with Zod
+- Displayed to the user for review
+
+AI calls must be server-side only.
+
+Fallback behavior is required when no AI provider is available.

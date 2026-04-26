@@ -33,7 +33,7 @@ export function parseWeekStart(value?: string) {
 export async function getWeeklyReviewContext(userId: string, weekStart: Date) {
   const weekEnd = getWeekEnd(weekStart);
 
-  const [completedTasks, incompleteTasks, habitLogs, goals, notes, existingReview] = await Promise.all([
+  const [completedTasks, incompleteTasks, habitLogs, goals, notes, dailyPlans, existingReview] = await Promise.all([
     db.task.findMany({
       where: {
         userId,
@@ -138,6 +138,22 @@ export async function getWeeklyReviewContext(userId: string, weekStart: Date) {
       orderBy: { createdAt: "desc" },
       take: 30,
     }),
+    db.dailyPlan.findMany({
+      where: {
+        userId,
+        date: {
+          gte: weekStart,
+          lt: weekEnd,
+        },
+      },
+      select: {
+        date: true,
+        priorities: true,
+        reflectionPrompt: true,
+      },
+      orderBy: { date: "asc" },
+      take: 7,
+    }),
     db.weeklyReview.findUnique({
       where: {
         userId_weekStart_weekEnd: {
@@ -151,6 +167,7 @@ export async function getWeeklyReviewContext(userId: string, weekStart: Date) {
 
   return {
     completedTasks,
+    dailyPlans,
     existingReview,
     goals,
     habitLogs,

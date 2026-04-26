@@ -1,4 +1,4 @@
-import { CalendarCheck, Flame, Plus } from "lucide-react";
+import { CalendarCheck, Flame, Plus, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getGoalOptionsForHabits, getHabitsForUser, getTodayDate } from "@/lib/db/habits";
@@ -10,6 +10,7 @@ import {
   EditHabitForm,
   MissedHabitReflectionForm,
 } from "./forms";
+import { AIHabitSuggestions } from "./ai-habit-suggestions";
 
 export default async function HabitsPage() {
   const user = await requireCurrentUser();
@@ -89,6 +90,16 @@ export default async function HabitsPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle>AI habit suggestions</CardTitle>
+          <Sparkles className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <AIHabitSuggestions goals={goals} />
+        </CardContent>
+      </Card>
 
       <section className="space-y-4">
         <div>

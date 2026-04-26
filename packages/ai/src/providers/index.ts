@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createAnthropicProvider } from "./anthropic";
 import { createFallbackProvider } from "./fallback";
 import { createGroqProvider } from "./groq";
 import { createOllamaProvider } from "./ollama";
@@ -18,6 +19,9 @@ export function getAIProvider(): AIProvider {
       return createResilientProvider(createGroqProvider());
     case "openai":
       return createResilientProvider(createOpenAIProvider());
+    case "anthropic":
+    case "claude":
+      return createResilientProvider(createAnthropicProvider());
     case "together":
     case "togetherai":
     case "together-ai":

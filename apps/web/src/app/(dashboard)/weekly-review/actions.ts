@@ -50,6 +50,11 @@ export async function generateWeeklyReviewAction(formData: FormData): Promise<Ge
       title: note.title,
       body: note.body.slice(0, 2000),
     })),
+    dailyPlans: context.dailyPlans.map((plan) => ({
+      date: plan.date.toISOString().slice(0, 10),
+      priorities: plan.priorities,
+      reflectionPrompt: plan.reflectionPrompt,
+    })),
   });
 
   if (!result.ok) {

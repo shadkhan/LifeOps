@@ -1,14 +1,21 @@
 "use server";
 
 import { db, type LifeAreaType } from "@lifeops/db";
-import { futureSelfSchema, idSchema, lifeAreaSchema } from "@lifeops/shared";
+import { futureSelfGenerationResponseSchema, futureSelfSchema, idSchema, lifeAreaSchema } from "@lifeops/shared";
 import { revalidatePath } from "next/cache";
 import { requireCurrentUser } from "@/lib/auth/current-user";
 import { getFutureSelfIdForUser } from "@/lib/db/future-self";
+import { generateFutureSelfProfile } from "@/server/services/ai-service";
 
 export type ActionState = {
   ok: boolean;
   message: string;
+};
+
+export type GenerateFutureSelfState = {
+  ok: boolean;
+  message: string;
+  suggestion: typeof futureSelfGenerationResponseSchema._type | null;
 };
 
 const errorState = (message: string): ActionState => ({ ok: false, message });
@@ -78,6 +85,88 @@ export async function addLifeAreaAction(_: ActionState, formData: FormData): Pro
   return successState("Life area added.");
 }
 
+export async function generateFutureSelfAction(
+  _: GenerateFutureSelfState,
+  formData: FormData,
+): Promise<GenerateFutureSelfState> {
+  const user = await requireCurrentUser();
+  const prompt = readString(formData, "prompt");
+
+  if (prompt.length < 10) {
+    return { ok: false, message: "Describe the future self you want in at least 10 characters.", suggestion: null };
+  }
+
+  const existingFutureSelf = await db.futureSelf.findUnique({
+    where: { userId: user.id },
+    select: { title: true, description: true, identityStatement: true },
+  });
+
+  const result = await generateFutureSelfProfile({
+    prompt,
+    existingFutureSelf: existingFutureSelf
+      ? `${existingFutureSelf.title}\n${existingFutureSelf.identityStatement}\n${existingFutureSelf.description ?? ""}`
+      : null,
+  });
+
+  if (!result.ok) {
+    return { ok: false, message: result.error, suggestion: null };
+  }
+
+  return {
+    ok: true,
+    message:
+      result.model === "fallback"
+        ? "AI provider unavailable, so LifeOps prepared a manual starter draft."
+        : "Future self draft generated for review.",
+    suggestion: result.data,
+  };
+}
+
+export async function saveGeneratedFutureSelfAction(_: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireCurrentUser();
+  const parsed = futureSelfGenerationResponseSchema.safeParse(parseJson(readString(formData, "suggestion")));
+  const selectedLifeAreas = new Set(formData.getAll("lifeAreas").map((value) => String(value)));
+
+  if (!parsed.success) {
+    return errorState(parsed.error.issues[0]?.message ?? "Generated future self data is invalid.");
+  }
+
+  const futureSelf = await db.futureSelf.upsert({
+    where: { userId: user.id },
+    update: {
+      title: parsed.data.title,
+      description: parsed.data.description,
+      identityStatement: parsed.data.identityStatement,
+    },
+    create: {
+      userId: user.id,
+      title: parsed.data.title,
+      description: parsed.data.description,
+      identityStatement: parsed.data.identityStatement,
+    },
+  });
+
+  const lifeAreasToCreate = parsed.data.lifeAreas.filter((_, index) => selectedLifeAreas.has(String(index)));
+
+  if (lifeAreasToCreate.length) {
+    await db.lifeArea.createMany({
+      data: lifeAreasToCreate.map((area) => ({
+        userId: user.id,
+        futureSelfId: futureSelf.id,
+        name: area.name,
+        type: area.type as LifeAreaType,
+        vision: area.vision,
+        currentReality: area.currentReality,
+        gap: area.gap,
+      })),
+    });
+  }
+
+  revalidatePath("/future-self");
+  revalidatePath("/dashboard");
+  return successState("Generated future self saved.");
+}
+
 export async function updateLifeAreaAction(_: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireCurrentUser();
   const lifeAreaId = readString(formData, "lifeAreaId");
@@ -129,4 +218,12 @@ function readString(formData: FormData, key: string) {
 function readOptionalString(formData: FormData, key: string) {
   const value = readString(formData, key);
   return value.length > 0 ? value : undefined;
+}
+
+function parseJson(value: string) {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
 }

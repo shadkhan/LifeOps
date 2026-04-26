@@ -1,13 +1,27 @@
 "use server";
 
 import { db } from "@lifeops/db";
-import { idSchema, noteSchema } from "@lifeops/shared";
+import { ideaExpansionResponseSchema, idSchema, noteSummaryResponseSchema, noteSchema } from "@lifeops/shared";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireCurrentUser } from "@/lib/auth/current-user";
+import { expandIdea, summarizeNote } from "@/server/services/ai-service";
 
 export type NoteActionState = {
   ok: boolean;
   message: string;
+};
+
+export type NoteSummaryState = {
+  ok: boolean;
+  message: string;
+  summary: z.infer<typeof noteSummaryResponseSchema> | null;
+};
+
+export type IdeaExpansionState = {
+  ok: boolean;
+  message: string;
+  expansion: z.infer<typeof ideaExpansionResponseSchema> | null;
 };
 
 const errorState = (message: string): NoteActionState => ({ ok: false, message });
@@ -92,6 +106,143 @@ export async function deleteNoteAction(formData: FormData) {
   });
 
   revalidateNotes();
+}
+
+export async function summarizeNoteAction(_: NoteSummaryState, formData: FormData): Promise<NoteSummaryState> {
+  const user = await requireCurrentUser();
+  const noteId = idSchema.safeParse(readString(formData, "noteId"));
+
+  if (!noteId.success) {
+    return { ok: false, message: "Invalid note.", summary: null };
+  }
+
+  const note = await db.note.findFirst({
+    where: { id: noteId.data, userId: user.id },
+    select: { title: true, body: true, tags: true },
+  });
+
+  if (!note) {
+    return { ok: false, message: "Note not found.", summary: null };
+  }
+
+  const result = await summarizeNote({
+    title: note.title,
+    body: note.body.slice(0, 6000),
+    tags: note.tags,
+  });
+
+  if (!result.ok) {
+    return { ok: false, message: result.error, summary: null };
+  }
+
+  return {
+    ok: true,
+    message: result.model === "fallback" ? "AI unavailable, so LifeOps prepared a starter summary." : "Note summary generated.",
+    summary: result.data,
+  };
+}
+
+export async function saveNoteSummaryAction(_: NoteActionState, formData: FormData): Promise<NoteActionState> {
+  const user = await requireCurrentUser();
+  const noteId = idSchema.safeParse(readString(formData, "noteId"));
+  const summary = noteSummaryResponseSchema.safeParse(parseJson(readString(formData, "summary")));
+
+  if (!noteId.success || !summary.success) {
+    return errorState("Choose a valid generated summary.");
+  }
+
+  const result = await db.note.updateMany({
+    where: { id: noteId.data, userId: user.id },
+    data: { aiSummary: summary.data.summary },
+  });
+
+  if (result.count === 0) {
+    return errorState("Note not found.");
+  }
+
+  revalidateNotes();
+  return successState("Summary saved to note.");
+}
+
+export async function expandIdeaAction(_: IdeaExpansionState, formData: FormData): Promise<IdeaExpansionState> {
+  const user = await requireCurrentUser();
+  const idea = readString(formData, "idea");
+
+  if (idea.length < 10) {
+    return { ok: false, message: "Enter an idea with at least 10 characters.", expansion: null };
+  }
+
+  const [futureSelf, goals] = await Promise.all([
+    db.futureSelf.findUnique({ where: { userId: user.id }, select: { title: true, identityStatement: true, description: true } }),
+    db.goal.findMany({
+      where: { userId: user.id, status: "active" },
+      include: { lifeArea: { select: { name: true } } },
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+    }),
+  ]);
+
+  const result = await expandIdea({
+    idea,
+    futureSelf: futureSelf ? `${futureSelf.title}\n${futureSelf.identityStatement}\n${futureSelf.description ?? ""}` : null,
+    activeGoals: goals.map((goal) => ({ title: goal.title, lifeArea: goal.lifeArea.name, progress: goal.progress })),
+  });
+
+  if (!result.ok) {
+    return { ok: false, message: result.error, expansion: null };
+  }
+
+  return {
+    ok: true,
+    message: result.model === "fallback" ? "AI unavailable, so LifeOps prepared a starter expansion." : "Idea expanded for review.",
+    expansion: result.data,
+  };
+}
+
+export async function saveExpandedIdeaAction(_: NoteActionState, formData: FormData): Promise<NoteActionState> {
+  const user = await requireCurrentUser();
+  const expansion = ideaExpansionResponseSchema.safeParse(parseJson(readString(formData, "expansion")));
+  const saveTasks = readString(formData, "saveTasks") === "on";
+
+  if (!expansion.success) {
+    return errorState("Generated idea expansion is invalid.");
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.note.create({
+      data: {
+        userId: user.id,
+        title: expansion.data.title,
+        body: [
+          expansion.data.summary,
+          "",
+          `Why it matters: ${expansion.data.whyItMatters}`,
+          "",
+          "Questions:",
+          ...expansion.data.questions.map((question) => `- ${question}`),
+        ].join("\n"),
+        tags: ["idea", "ai"],
+        aiSummary: expansion.data.summary,
+      },
+    });
+
+    if (saveTasks && expansion.data.nextSteps.length) {
+      await tx.task.createMany({
+        data: expansion.data.nextSteps.map((task) => ({
+          userId: user.id,
+          title: task.title,
+          description: task.description ?? task.reason,
+          priority: task.priority,
+          status: "todo",
+          dueDate: parseOptionalDateValue(task.dueDate),
+        })),
+      });
+    }
+  });
+
+  revalidateNotes();
+  revalidatePath("/tasks");
+  return successState("Expanded idea saved.");
 }
 
 async function parseNoteForm(userId: string, formData: FormData) {
@@ -188,4 +339,21 @@ function parseTags(value: string) {
         .filter(Boolean),
     ),
   );
+}
+
+function parseOptionalDateValue(value?: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function parseJson(value: string) {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
 }
