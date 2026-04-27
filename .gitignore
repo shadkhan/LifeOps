@@ -7,3 +7,11 @@ dist
 coverage
 *.tsbuildinfo
 *.log
+.lifeops-runtime
+
+AGENTS.md
+ARCHITECTURE.md
+DEPLOYMENT.md
+plan.md
+PRD.md
+SECURITY.md
