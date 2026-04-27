@@ -5,6 +5,8 @@ param(
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $RuntimeDir = Join-Path $Root ".lifeops-runtime"
 $PidFile = Join-Path $RuntimeDir "lifeops-app.pid"
+$OutLogFile = Join-Path $RuntimeDir "lifeops-app.out.log"
+$ErrLogFile = Join-Path $RuntimeDir "lifeops-app.err.log"
 
 if (Test-Path $PidFile) {
   $AppPid = Get-Content $PidFile -ErrorAction SilentlyContinue
@@ -19,6 +21,9 @@ if (Test-Path $PidFile) {
 } else {
   Write-Host "LifeOps app is not running."
 }
+
+Remove-Item $OutLogFile -Force -ErrorAction SilentlyContinue
+Remove-Item $ErrLogFile -Force -ErrorAction SilentlyContinue
 
 if ($StopInfra) {
   Set-Location $Root

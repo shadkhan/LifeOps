@@ -9,6 +9,7 @@ $RuntimeDir = Join-Path $Root ".lifeops-runtime"
 $PidFile = Join-Path $RuntimeDir "lifeops-app.pid"
 $OutLogFile = Join-Path $RuntimeDir "lifeops-app.out.log"
 $ErrLogFile = Join-Path $RuntimeDir "lifeops-app.err.log"
+$RunnerFile = Join-Path $RuntimeDir "lifeops-runner.ps1"
 
 New-Item -ItemType Directory -Force -Path $RuntimeDir | Out-Null
 
@@ -42,25 +43,38 @@ if (-not $SkipBuild) {
   pnpm --filter "@lifeops/web" build
 }
 
-$Command = @"
-Set-Location '$Root'
-if (Test-Path '.env') {
-  Get-Content '.env' | ForEach-Object {
-    if (`$_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)\s*$') {
-      `$name = `$matches[1]
-      `$value = `$matches[2].Trim().Trim('"').Trim("'")
-      [Environment]::SetEnvironmentVariable(`$name, `$value, 'Process')
+$Runner = @'
+param(
+  [string]$Root,
+  [int]$Port
+)
+
+$ErrorActionPreference = "Stop"
+Set-Location $Root
+
+if (Test-Path ".env") {
+  Get-Content ".env" | ForEach-Object {
+    if ($_ -match "^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)\s*$") {
+      $name = $matches[1]
+      $value = $matches[2].Trim()
+      if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+        $value = $value.Substring(1, $value.Length - 2)
+      }
+      [Environment]::SetEnvironmentVariable($name, $value, "Process")
     }
   }
 }
-`$env:NODE_ENV = 'production'
-`$env:PORT = '$Port'
+
+$env:NODE_ENV = "production"
+$env:PORT = [string]$Port
 pnpm --dir apps/web exec next start -p $Port
-"@
+'@
+
+Set-Content -Path $RunnerFile -Value $Runner
 
 Write-Host "Starting LifeOps app in the background on port $Port..."
 $Process = Start-Process powershell `
-  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $Command `
+  -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $RunnerFile, "-Root", $Root, "-Port", $Port `
   -RedirectStandardOutput $OutLogFile `
   -RedirectStandardError $ErrLogFile `
   -WindowStyle Hidden `
